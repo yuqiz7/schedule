@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2026 秋 排课表</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="排课表">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<style>
+:root{--bg:#f5f6f8;--panel:#fff;--line:#e3e6ea;--line2:#f0f2f4;--ink:#1f2933;--muted:#6b7684;--faint:#9aa4b0;--hour:64px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{font-size:16px;font-weight:600;margin:0 auto 0 0}
+button{font:inherit;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{background:#f7f8fa}
+button:focus-visible,.ev:focus-visible,.chip:focus-visible{outline:2px solid #2f6fd6;outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:5px 12px}
+.seg button.on{background:var(--ink);color:#fff}
+/* legend */
+.legend{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:14px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:12px;user-select:none}
+.chip i{width:10px;height:10px;border-radius:3px;background:var(--c);display:inline-block;flex:0 0 auto}
+.chip b{font-weight:600}.chip small{color:var(--muted)}
+.chip.off{opacity:.45;text-decoration:line-through}
+/* day tabs */
+.tabs{display:none;gap:4px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center}
+.tabs .days{display:flex;gap:4px;flex:1;justify-content:center}
+.tabs .days button{flex:1;max-width:80px;padding:6px 0;border-radius:6px;position:relative}
+.tabs .days button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tabs .days button small{display:block;font-size:10px;color:var(--faint);font-weight:400}
+.tabs .days button.on small{color:#cfd6df}
+body.day .tabs{display:flex}
+/* grid */
+.scroller{overflow:auto;-webkit-overflow-scrolling:touch}
+.grid{display:grid;grid-template-columns:44px repeat(var(--days),minmax(128px,1fr));min-width:820px;background:var(--panel)}
+body.day .grid{grid-template-columns:44px 1fr;min-width:0}
+.dayhead{text-align:center;font-weight:600;font-size:12px;padding:8px 0;border-bottom:1px solid var(--line);border-left:1px solid var(--line2)}
+.dayhead.corner{position:sticky;left:0;z-index:7;background:var(--panel);border-left:0}
+body.day .dayhead,body.day .dayhead.corner{display:none}
+.spacer{grid-column:1/-1;height:12px}
+.timecol{position:sticky;left:0;z-index:6;background:var(--panel);border-right:1px solid var(--line);position:relative}
+.timecol span{position:absolute;right:6px;transform:translateY(-50%);font-size:11px;color:var(--faint);white-space:nowrap}
+.daycol{position:relative;border-left:1px solid var(--line2);background:repeating-linear-gradient(to bottom,var(--line2) 0,var(--line2) 1px,transparent 1px,transparent var(--hour))}
+/* event */
+.ev{position:absolute;border-radius:4px;border:1px solid rgba(0,0,0,.08);border-left:3px solid var(--c);background:var(--bg-c);color:var(--ink);cursor:pointer;padding:5px 6px 4px;overflow:hidden;transition:box-shadow .15s,opacity .15s}
+.ev.sel{box-shadow:0 0 0 2px var(--c),0 6px 18px rgba(20,30,50,.18);z-index:20}
+.ev.dim{opacity:.5}
+.code{display:flex;align-items:center;gap:4px;font-weight:600;font-size:11.5px;color:var(--c);padding-right:14px}
+.code em{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.flag{flex:0 0 auto;font-size:10px;line-height:14px;padding:0 4px;border-radius:3px;background:#fff3d6;color:#8a5a00;border:1px solid #f0d28a}
+.time{font-size:11px;color:var(--muted);margin-top:1px;line-height:1.25}
+.short{font-size:11px;margin-top:2px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.more{display:none;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.3}
+body.day .more{display:block}
+body.day .short{white-space:normal;font-weight:500}
+.x{position:absolute;right:2px;top:2px;width:16px;height:16px;line-height:14px;text-align:center;border:0;background:transparent;color:var(--faint);padding:0;border-radius:50%;font-size:14px}
+.x:hover{background:rgba(0,0,0,.08);color:var(--ink)}
+/* detail sheet */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:100;background:var(--panel);border-top:3px solid var(--c);box-shadow:0 -8px 30px rgba(20,30,50,.18);padding:12px 16px calc(14px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .25s cubic-bezier(.2,.7,.2,1);max-width:640px;margin:0 auto;border-radius:12px 12px 0 0}
+.sheet.open{transform:none}
+.sheet h3{margin:0 0 2px;font-size:15px;font-weight:600;padding-right:28px}
+.sheet .sub{color:var(--muted);font-size:12px;margin-bottom:8px}
+.sheet dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.sheet dt{color:var(--muted);white-space:nowrap}.sheet dd{margin:0}
+.sheet .note{margin-top:8px;font-size:12px;color:#8a5a00;background:#fff3d6;border-radius:4px;padding:4px 8px}
+.sheet .acts{display:flex;gap:8px;margin-top:12px}
+.sheet .close{position:absolute;right:10px;top:8px;border:0;font-size:20px;line-height:1;padding:4px 8px;color:var(--muted)}
+.backdrop{position:fixed;inset:0;z-index:90;display:none}
+.backdrop.open{display:block}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+.section{padding:12px;background:var(--panel);border-top:1px solid var(--line)}
+.section h2{font-size:13px;font-weight:600;margin:0 0 8px;color:var(--muted)}
+.hidden-list,.online-list{display:flex;gap:6px;flex-wrap:wrap}
+.hidden-list .chip{border-style:dashed}.online-list .chip{cursor:default}
+.empty{color:var(--faint);font-size:12px}
+footer{padding:12px 12px 28px;color:var(--faint);font-size:11px}
+@media (max-width:600px){header h1{font-size:15px}.legend{flex-wrap:nowrap;overflow-x:auto}.chip{flex:0 0 auto}}
+</style>
+</head>
+<body>
+<header>
+  <h1>2026 秋 排课表</h1>
+  <span class="seg"><button id="vWeek">整周</button><button id="vDay">单日</button></span>
+  <button id="reset">恢复全部</button>
+</header>
+<div class="legend" id="legend"></div>
+<div class="tabs"><button id="prev">‹</button><div class="days" id="daytabs"></div><button id="next">›</button></div>
+<div class="scroller"><div class="grid" id="grid"></div></div>
+<div class="section"><h2>已隐藏（点击恢复）</h2><div class="hidden-list" id="hidden"></div></div>
+<div class="section"><h2>仅线上、无固定时间</h2><div class="online-list" id="online"></div></div>
+<footer>数据来自 2026-09-07 选课系统截图；R = Restricted（当时显示对本项目不开放或名额受限），人数为 已选/容量。</footer>
+<div class="backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet"></div>
+
+<script>
+// ===== 课程数据 =====
+const DATES="Sep 8 – Dec 14, 2026";
+const COURSES=[
+ {code:"COMS4701W",group:"P",title:"Artificial Intelligence",short:"AI",sections:[
+   {sec:"001",days:"TuTh",time:"10:10am-11:25am",room:"702 Hamilton Hall",inst:"Salleb-Aouissi, Ansaf",call:"13664",enr:"129 / 70"},
+   {sec:"002",days:"TuTh",time:"11:40am-12:55pm",room:"301 Uris Hall",inst:"Salleb-Aouissi, Ansaf",call:"13665",enr:"285 / 266"},
+   {sec:"003",days:"TuTh",time:"7:10pm-8:25pm",room:"301 Pupin Laboratories",inst:"Lin, Adam",call:"17213",enr:"73 / 150"},
+   {sec:"004",days:"Fr",time:"10:10am-12:40pm",room:"301 Uris Hall",inst:"Salleb-Aouissi, Ansaf",call:"17212",enr:"162 / 150",restricted:true},
+   {sec:"C02",online:true,inst:"Salleb-Aouissi, Ansaf",call:"20342",enr:"1 / 99",restricted:true},
+   {sec:"V02",online:true,inst:"Salleb-Aouissi, Ansaf",call:"20217",enr:"27 / 99",restricted:true}]},
+ {code:"IEOR4010E",group:"P",title:"Artificial Intelligence for OR and FE",short:"AI for OR/FE",sections:[
+   {sec:"001",days:"MoWe",time:"10:10am-11:25am",room:"428 Pupin Laboratories",inst:"Agrawal, Shipra",call:"14505",enr:"64 / 100"},
+   {sec:"002",days:"MoWe",time:"8:40am-9:55am",room:"203 Mathematics Building",inst:"Balkanski, Eric",call:"15835",enr:"66 / 90"}]},
+ {code:"COMS4731W",group:"G",title:"Computer Vision I: First Principles",short:"Computer Vision I",sections:[
+   {sec:"001",days:"TuTh",time:"10:10am-11:25am",room:"142 Uris Hall",inst:"Nayar, Shree",call:"13667",enr:"81 / 80"},
+   {sec:"002",days:"TuTh",time:"11:40am-12:55pm",room:"142 Uris Hall",inst:"Nayar, Shree",call:"17955",enr:"86 / 80"}]},
+ {code:"COMS4705W",group:"G",title:"Natural Language Processing",short:"NLP",sections:[
+   {sec:"001",days:"MoWe",time:"2:40pm-3:55pm",room:"CIN Alfred Lerner Hall",inst:"Hewitt, John",call:"13666",enr:"324 / 300"},
+   {sec:"030",days:"Tu",time:"7:00pm-9:30pm",room:"833 Seeley W. Mudd Building",inst:"Simion, Andrei",call:"14584",enr:"75 / 90"},
+   {sec:"V01",online:true,inst:"Hewitt, John",call:"18089",enr:"24 / 99"}]},
+ {code:"IEOR4742E",group:"L",title:"Deep Learning for OR and FE",short:"DL for OR/FE",sections:[
+   {sec:"001",days:"FrSa",time:"9:00am-6:00pm",room:"428 Pupin Laboratories",inst:"Hirsa, Ali",call:"14729",enr:"132 / 130",restricted:true,dates:"Sep 6 – Dec 19, 2026",note:"系统提示：不对本院系/项目开放；Cross-Registration Appeal 7/1 起"}]},
+ {code:"ECBM4040E",group:"L",title:"Neural Networks & Deep Learning",short:"NN & DL (ECBM)",sections:[
+   {sec:"001",days:"Fr",time:"10:10am-12:40pm",room:"207 Mathematics Building",inst:"Kostic, Zoran",call:"11220",enr:"107 / 152"}]},
+ {code:"COMS4776W",group:"L",title:"Neural Networks & Deep Learning",short:"NN & DL (COMS)",sections:[
+   {sec:"001",days:"TuTh",time:"2:40pm-3:55pm",room:"428 Pupin Laboratories",inst:"Zemel, Richard",call:"13673",enr:"143 / 132"},
+   {sec:"V01",online:true,inst:"Zemel, Richard",call:"18091",enr:"22 / 99"}]},
+ {code:"BMEN4470E",group:"L",title:"Deep Learning for Biomedical Signal Processing",short:"DL Biomed Signal",sections:[
+   {sec:"001",days:"Mo",time:"4:10pm-6:40pm",room:"717 Hamilton Hall",inst:"Sajda, Paul",call:"11868",enr:"71 / 80",restricted:true,note:"系统提示：不对本院系/项目开放"}]},
+ {code:"ELEN4720E",group:"D",title:"Machine Learning for Signals, Information and Data",short:"ML Signals & Data",sections:[
+   {sec:"001",days:"We",time:"10:10am-12:40pm",room:"313 Fayerweather",inst:"Paisley, John",call:"11282",enr:"86 / 80"}]},
+ {code:"IEOR4525E",group:"D",title:"Machine Learning FE & OPR",short:"ML FE & OPR",sections:[
+   {sec:"001",days:"MoWe",time:"4:10pm-5:25pm",room:"614 Schermerhorn Hall",inst:"Bienstock, Daniel",call:"14705",enr:"91 / 92",restricted:true},
+   {sec:"002",days:"MoWe",time:"1:10pm-2:25pm",room:"501 Schermerhorn Hall",inst:"Bienstock, Daniel",call:"16882",enr:"99 / 100"}]},
+ {code:"COMS4771W",group:"D",title:"Machine Learning",short:"Machine Learning",sections:[
+   {sec:"001",days:"TuTh",time:"1:10pm-2:25pm",room:"451 Computer Science Bldg",inst:"Verma, Nakul",call:"13670",enr:"0 / 110"},
+   {sec:"002",days:"TuTh",time:"2:40pm-3:55pm",room:"451 Computer Science Bldg",inst:"Verma, Nakul",call:"13671",enr:"0 / 110"},
+   {sec:"003",days:"Fr",time:"1:10pm-3:40pm",room:"601 Fairchild Life Sciences Bldg",inst:"Verma, Nakul",call:"19971",enr:"0 / 75"}]},
+];
+
+
+const GROUP_COLORS={P:["#6f3fc4","#e6dbf7"],D:["#8b1a2b","#e9bcc3"],L:["#cf5f52","#fdece8"],G:["#2f8f5b","#d8efe1"]};
+const DAYS=["Mo","Tu","We","Th","Fr","Sa"], DAYNAME=["MON","TUE","WED","THU","FRI","SAT"], DAYCN=["周一","周二","周三","周四","周五","周六"];
+
+function toMin(s){const m=s.match(/(\d+):(\d+)(am|pm)/);let h=+m[1],mi=+m[2];if(m[3]==="pm"&&h!==12)h+=12;if(m[3]==="am"&&h===12)h=0;return h*60+mi;}
+const events=[], online=[], byId={};
+COURSES.forEach(c=>{c.color=GROUP_COLORS[c.group];c.sections.forEach(s=>{
+  s.course=c;s.id=c.code+"-"+s.sec;byId[s.id]=s;
+  if(s.online){online.push(s);return;}
+  const [a,b]=s.time.split("-");s.start=toMin(a);s.end=toMin(b);s.dayList=s.days.match(/[A-Z][a-z]/g);
+  s.dayList.forEach(d=>events.push({s,day:DAYS.indexOf(d)}));
+});});
+
+// 状态
+const KEY="planner-2026fall";
+const state=Object.assign({hidden:[],view:window.innerWidth<600?"day":"week",day:Math.min(Math.max(new Date().getDay()-1,0),5)},JSON.parse(localStorage.getItem(KEY)||"{}"));
+let hidden=new Set(state.hidden);
+const save=()=>localStorage.setItem(KEY,JSON.stringify({hidden:[...hidden],view:state.view,day:state.day}));
+let selected=null;
+
+const HOUR=64, START=8, END=22;
+const grid=document.getElementById("grid");
+function render(){
+  document.body.classList.toggle("day",state.view==="day");
+  document.getElementById("vWeek").classList.toggle("on",state.view==="week");
+  document.getElementById("vDay").classList.toggle("on",state.view==="day");
+  const days=state.view==="day"?[state.day]:DAYS.map((_,i)=>i);
+  grid.style.setProperty("--days",days.length);
+  grid.innerHTML="";
+  const corner=document.createElement("div");corner.className="dayhead corner";grid.appendChild(corner);
+  days.forEach(i=>{const d=document.createElement("div");d.className="dayhead";d.textContent=DAYNAME[i];grid.appendChild(d);});
+  const sp0=document.createElement("div");sp0.className="spacer";grid.appendChild(sp0);
+  const tc=document.createElement("div");tc.className="timecol";tc.style.height=(END-START)*HOUR+"px";
+  for(let h=START;h<=END;h++){const sp=document.createElement("span");sp.style.top=(h-START)*HOUR+"px";sp.textContent=(h%12||12)+(h<12?" AM":" PM");tc.appendChild(sp);}
+  grid.appendChild(tc);
+  days.forEach(di=>{
+    const col=document.createElement("div");col.className="daycol";col.style.height=(END-START)*HOUR+"px";
+    const evs=events.filter(e=>e.day===di&&!hidden.has(e.s.id)).sort((a,b)=>a.s.start-b.s.start||b.s.end-a.s.end);
+    let cluster=[],clusterEnd=-1;
+    const flush=()=>{if(!cluster.length)return;const colEnds=[];
+      cluster.forEach(e=>{let k=colEnds.findIndex(en=>en<=e.s.start);if(k<0){k=colEnds.length;colEnds.push(0);}colEnds[k]=e.s.end;e.col=k;});
+      cluster.forEach(e=>{e.n=colEnds.length;});cluster=[];};
+    evs.forEach(e=>{if(e.s.start>=clusterEnd)flush();cluster.push(e);clusterEnd=Math.max(clusterEnd,e.s.end);});
+    flush();
+    evs.forEach(e=>col.appendChild(card(e)));
+    grid.appendChild(col);
+  });
+  const sp1=document.createElement("div");sp1.className="spacer";grid.appendChild(sp1);
+  renderTabs();renderLegend();renderHidden();applySel();
+}
+function card(e){
+  const s=e.s,c=s.course,w=100/e.n;
+  const el=document.createElement("div");el.className="ev";el.tabIndex=0;el.dataset.id=s.id;
+  el.style.cssText=`top:${(s.start-START*60)/60*HOUR}px;left:calc(${w*e.col}% + 2px);width:calc(${w}% - 4px);height:${(s.end-s.start)/60*HOUR-2}px;--c:${c.color[0]};--bg-c:${c.color[1]}`;
+  const dayStr=s.dayList.join(" ");
+  el.innerHTML=`<div class="code"><em>${c.code} <small>· ${s.sec}</small></em>${s.restricted?'<span class="flag">R</span>':''}</div>
+    <div class="time">${dayStr} ${s.time.replace("-","–")}</div>
+    <div class="short">${state.view==="day"?c.title:c.short}</div>
+    <div class="more">${s.room} · ${s.inst} · ${s.enr}</div>
+    <button class="x" title="暂时隐藏" aria-label="隐藏">×</button>`;
+  el.addEventListener("click",ev=>{
+    if(ev.target.closest(".x")){hide(s.id);return;}
+    select(selected===s.id?null:s.id);
+  });
+  el.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();el.click();}});
+  return el;
+}
+function hide(id){hidden.add(id);if(selected===id)select(null);save();render();}
+function select(id){selected=id;applySel();renderSheet();}
+function applySel(){
+  document.querySelectorAll(".ev").forEach(el=>{el.classList.toggle("sel",selected===el.dataset.id);el.classList.toggle("dim",!!selected&&selected!==el.dataset.id);});
+}
+function renderSheet(){
+  const sh=document.getElementById("sheet"),bd=document.getElementById("backdrop");
+  if(!selected){sh.classList.remove("open");bd.classList.remove("open");return;}
+  const s=byId[selected],c=s.course;
+  sh.style.setProperty("--c",c.color[0]);
+  sh.innerHTML=`<button class="close" aria-label="关闭">×</button>
+    <h3>${c.title}</h3><div class="sub">${c.code} · Section ${s.sec} · Call ${s.call}</div>
+    <dl><dt>时间</dt><dd>${s.dayList.map((d,i)=>DAYCN[DAYS.indexOf(d)]).join("、")} ${s.time.replace("-","–")}</dd>
+    <dt>地点</dt><dd>${s.room}</dd><dt>教师</dt><dd>${s.inst}</dd>
+    <dt>人数</dt><dd>${s.enr}${s.restricted?" · Restricted":""}</dd><dt>日期</dt><dd>${s.dates||DATES}</dd></dl>
+    ${s.note?`<div class="note">${s.note}</div>`:""}
+    <div class="acts"><button class="hideBtn">隐藏此 section</button></div>`;
+  sh.querySelector(".close").onclick=()=>select(null);
+  sh.querySelector(".hideBtn").onclick=()=>hide(s.id);
+  sh.classList.add("open");bd.classList.add("open");
+}
+document.getElementById("backdrop").onclick=()=>select(null);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")select(null);});
+function renderTabs(){
+  const T=document.getElementById("daytabs");T.innerHTML="";
+  DAYS.forEach((_,i)=>{const b=document.createElement("button");b.className=i===state.day?"on":"";
+    const n=events.filter(e=>e.day===i&&!hidden.has(e.s.id)).length;
+    b.innerHTML=`${DAYCN[i]}<small>${n} 节</small>`;b.onclick=()=>{state.day=i;save();render();};T.appendChild(b);});
+}
+document.getElementById("prev").onclick=()=>{state.day=(state.day+5)%6;save();render();};
+document.getElementById("next").onclick=()=>{state.day=(state.day+1)%6;save();render();};
+document.getElementById("vWeek").onclick=()=>{state.view="week";save();render();};
+document.getElementById("vDay").onclick=()=>{state.view="day";save();render();};
+function renderLegend(){
+  const L=document.getElementById("legend");L.innerHTML="";
+  COURSES.forEach(c=>{
+    const ids=c.sections.filter(s=>!s.online).map(s=>s.id);
+    const allOff=ids.length&&ids.every(id=>hidden.has(id));
+    const shown=ids.filter(id=>!hidden.has(id)).length;
+    const ch=document.createElement("span");ch.className="chip"+(allOff?" off":"");ch.style.setProperty("--c",c.color[0]);ch.tabIndex=0;
+    ch.innerHTML=`<i></i><b>${c.code}</b><small>${c.short} ${shown}/${ids.length}</small>`;ch.title="点击整门显示/隐藏";
+    ch.onclick=()=>{if(allOff)ids.forEach(id=>hidden.delete(id));else ids.forEach(id=>hidden.add(id));if(hidden.has(selected))selected=null;save();render();renderSheet();};
+    L.appendChild(ch);
+  });
+}
+function renderHidden(){
+  const H=document.getElementById("hidden");H.innerHTML="";
+  const list=[...hidden].map(id=>byId[id]).filter(Boolean);
+  if(!list.length){H.innerHTML='<span class="empty">无</span>';return;}
+  list.forEach(s=>{const ch=document.createElement("span");ch.className="chip";ch.style.setProperty("--c",s.course.color[0]);
+    ch.innerHTML=`<i></i><b>${s.course.code} · ${s.sec}</b><small>${s.dayList.join(" ")} ${s.time}</small>`;
+    ch.onclick=()=>{hidden.delete(s.id);save();render();};H.appendChild(ch);});
+}
+(function(){const O=document.getElementById("online");
+  online.forEach(s=>{const ch=document.createElement("span");ch.className="chip";ch.style.setProperty("--c",s.course.color[0]);
+    ch.innerHTML=`<i></i><b>${s.course.code} · ${s.sec}</b><small>${s.course.short} · ${s.inst} · ${s.enr}${s.restricted?" · R":""}</small>`;O.appendChild(ch);});})();
+document.getElementById("reset").onclick=()=>{hidden.clear();save();render();};
+render();
+</script>
+</body>
+</html>
